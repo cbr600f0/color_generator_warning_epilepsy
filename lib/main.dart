@@ -1,11 +1,61 @@
 import 'package:flutter/material.dart';
+import 'package:path/path.dart';
 import 'dart:math';
+import 'package:sqflite/sqflite.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:async';
+import 'models/Goal.dart';
+import 'providers/GoalProvider.dart';
 
 void main() => runApp(new MyApp());
 
-class MyApp extends StatelessWidget {
-  // This widget is the root of your application.
+class MyApp extends StatefulWidget {
   @override
+  createState() => new _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+
+_MyAppState() {
+  this.initialize();
+}
+
+  bool hasLoaded = false;
+
+  Future initialize() async {
+    final directory = await getApplicationDocumentsDirectory();
+    String path = join(directory.path, "demo.db");
+
+    Database database = await openDatabase(
+      path, 
+      version: 1,
+      onCreate: _databaseOnCreate
+    );
+
+    final goalProvider = new GoalProvider(database);
+    final goal = new Goal();
+    goal.name = "Je dikke moeder";
+    await goalProvider.insert(goal);
+    setState(() {hasLoaded = true;});
+  }
+
+  _databaseOnCreate (Database db, int version) async {
+    // When creating the db, create the table
+    await db.execute("CREATE TABLE goal (id INTEGER PRIMARY KEY, name TEXT)");
+    await db.execute("""
+      CREATE TABLE task (
+        id INTEGER PRIMARY KEY, 
+        goal_id INTEGER, 
+        name TEXT, 
+        description TEXT, 
+        done INTEGER,
+        FOREIGN KEY (goal_id) REFERENCES goal(id)
+      )
+    """);
+  }
+
+  // This widget is the root of your application.
+  @override 
   Widget build(BuildContext context) {
     return new MaterialApp(
       title: 'School planner',
@@ -20,7 +70,7 @@ class MyApp extends StatelessWidget {
         // counter didn't reset back to zero; the application is not restarted.
         primarySwatch: Colors.blue,
       ),
-      home: new MyHomePage(title: 'Goals main page'),
+      home: hasLoaded ? new MyHomePage(title: 'Goals main page') : new Text("is loading"),
     );
   }
 }
@@ -45,7 +95,7 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   int _counter = 0;
-  List<Color> colorList = [Colors.black, Colors.purpleAccent, Colors.pink, Colors.amberAccent];
+  List<Color> colorList = [Colors.black, Colors.purpleAccent, Colors.pink, Colors.amberAccent, Colors.lightBlue, Colors.lightBlueAccent, Colors.white, Colors.brown, Colors.pinkAccent, Colors.red];
   Random random = new Random();
 
   void _incrementCounter() {
